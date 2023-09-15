@@ -64,8 +64,6 @@ function minesweeperGameBootstrapper(game) {
 
     // hide text
     document.querySelector("#h1_text").style.display = 'none';
-
-    // generate board
     generateBoard(game);
 }
 
@@ -106,7 +104,6 @@ function generateBoard(game) {
             board[i][j].hasBomb = Math.random() * maxProbability < game.bombProbability;
         }
     }
-    // console.log(board);
 
     /*
     *
@@ -137,6 +134,8 @@ function generateBoard(game) {
                         bombsAround++;
                     }
                 }
+            } else {
+                --squaresLeft;
             }
             board[i][j].bombCount = bombsAround;
         }
@@ -168,35 +167,38 @@ function renderBoard() {
         td.addEventListener('contextmenu', (event) => {
             event.preventDefault();
             if (document.querySelector(`#${td.id}`).firstChild.src.toString().includes("flag.png")) {
-                console.log(document.querySelector(`#${td.id}`).firstChild.src)
                 document.querySelector(`#${td.id}`).firstChild.src = "empty.png";
                 document.querySelector(`#${td.id}`).firstChild.alt = "empty";
+                let row = td.id.split('i')[1].split('j')[0];
+                let column = td.id.split('i')[1].split('j')[1];
+                removeFlagFromRowAndColumn(row, column);
             } else if (document.querySelector(`#${td.id}`).firstChild.src.toString().includes("empty.png")) {
                 document.querySelector(`#${td.id}`).firstChild.src = "flag.png";
                 document.querySelector(`#${td.id}`).firstChild.alt = "flag";
+                let row = td.id.split('i')[1].split('j')[0];
+                let column = td.id.split('i')[1].split('j')[1];
+                flaggedSquares.push(new Pair(row, column));
             }
         })
     });
 }
 
+// for selecting game modes
 easyOption.addEventListener("click", (event) => {
-    let game = new GameMode(9, 9, "easy", 35);
+    let game = new GameMode(9, 9, "easy", 20);
     minesweeperGameBootstrapper(game);
 });
 
 mediumOption.addEventListener("click", (event) => {
-    let game = new GameMode(15, 15, "medium", 40);
+    let game = new GameMode(15, 15, "medium", 30);
     minesweeperGameBootstrapper(game);
 });
 
 hardOption.addEventListener("click", (event) => {
-    let game = new GameMode(21, 21, "hard", 45);
+    let game = new GameMode(21, 21, "hard", 35);
     minesweeperGameBootstrapper(game);
 });
-// window.addEventListener(`contextmenu`, (e) => {
-//     e.preventDefault();
-//     console.log("rightClick");
-// });
+
 /*
 * call the function that "handles the game"
 * called at the end of the file, because if called at the start,
@@ -205,6 +207,72 @@ hardOption.addEventListener("click", (event) => {
  */
 
 // TODO create the other required functions such as 'discovering' a tile, and so on (also make sure to handle the win/loss cases)
+
+// function for clicking on a cell
 function tdclick(id) {
-    console.log(document.querySelector(`#${id}`).firstChild.src = "1.png");
+    let row = Number(id.split('i')[1].split('j')[0]);
+    let column = Number(id.split('i')[1].split('j')[1]);
+    let numberOfBombs = board[row][column].bombCount;
+    if (document.querySelector(`#${id}`).firstChild.src.toString().includes("empty.png")) {
+        // if is bomb
+        if (board[row][column].hasBomb) {
+            document.querySelector(`#${id}`).firstChild.src = "bomb.jpg";
+            document.querySelector(`#${id}`).firstChild.alt = "bomb";
+            gameOverLost();
+        } else if (numberOfBombs == 0) { // if is emoty
+            expand(row, column);
+            if (squaresLeft == 0) {
+                gameOverWon();
+            }
+        } else { // if has bombs near
+            let numberImage = numberOfBombs.toString() + '.png';
+            document.querySelector(`#${id}`).firstChild.src = numberImage;
+            openedSquares.push(new Pair(row, column));
+            --squaresLeft;
+            if (squaresLeft == 0) {
+                gameOverWon();
+            }
+        }
+    }
+}
+
+function removeFlagFromRowAndColumn(row, column) {
+    for (let i = 0; i < flaggedSquares.length; ++i) {
+        let pair = flaggedSquares[i];
+        if (pair.x == row && pair.y == column) {
+            flaggedSquares.splice(i, 1);
+            break;
+        }
+    }
+}
+
+// display game over! you on!
+function gameOverWon() {
+    document.querySelector(`#h1_text`).innerHTML = "Game Over!<br></br>You Won!";
+    document.querySelector(`#h1_text`).style.display = 'block';
+}
+
+// display game over! you lost!
+function gameOverLost() {
+    document.querySelector(`#h1_text`).innerHTML = "Game Over!<br></br>You Lost!";
+    document.querySelector(`#h1_text`).style.display = 'block';
+}
+
+// expand empty blocks
+function expand(row, column) {
+    if (0 > row || 0 > column || row == board.length || column == board[0].length || board[row][column].bombCount != 0) {
+        return;
+    }
+    --squaresLeft;
+    board[row][column].bombCount = -1;
+    let id = 'i' + row + 'j' + column;
+    document.querySelector(`#${id}`).firstChild.src = "grey2.jpg";
+    document.querySelector(`#${id}`).firstChild.alt = "grey2";
+    let dx = [1, 0, -1, 0];
+    let dy = [0, 1, 0, -1];
+    for (let dir = 0; dir < 4; ++dir) {
+        let newRow = dy[dir] + row;
+        let newColumn = dx[dir] + column;
+        expand(newRow, newColumn);
+    }
 }
